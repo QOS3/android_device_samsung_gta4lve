@@ -22,8 +22,9 @@ if [ "$1" = "$FDEVICE" -o "$FOX_BUILD_DEVICE" = "$FDEVICE" ]; then
 	export TW_DEFAULT_LANGUAGE="en"
 	export LC_ALL="C"
 	export ALLOW_MISSING_DEPENDENCIES=true
-	export FOX_VANILLA_BUILD=1
-	export FOX_NO_SAMSUNG_SPECIAL=1
+    export FOX_USE_SED_BINARY=1
+    export OF_ENABLE_LPTOOLS=1
+	export OF_NO_SAMSUNG_SPECIAL=1
 	export FOX_ENABLE_APP_MANAGER=1
 	export FOX_USE_BASH_SHELL=1
 	export FOX_ASH_IS_BASH=1
@@ -39,6 +40,11 @@ if [ "$1" = "$FDEVICE" -o "$FOX_BUILD_DEVICE" = "$FDEVICE" ]; then
 	export FOX_DELETE_INITD_ADDON=1
 	export FOX_DELETE_AROMAFM=1
 	export FOX_USE_BUSYBOX_BINARY=1
+	export OF_CHECK_OVERWRITE_ATTEMPTS=1
+	export FOX_REPLACE_TOOLBOX_GETPROP=1
+	export FOX_DELETE_MAGISK_ADDON=1
+	export OF_MAINTAINER=DevCat3
+	export FOX_USE_NANO_EDITOR=1
 else
 	if [ -z "$FOX_BUILD_DEVICE" -a -z "$BASH_SOURCE" ]; then
 		echo "I: This script requires bash. Not processing the $FDEVICE $(basename $0)"
