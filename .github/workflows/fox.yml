@@ -63,24 +63,7 @@ jobs:
         echo "Device Tree: ${{ inputs.DEVICE_TREE }}"
         echo "Device Branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
         echo "Build Target: ${{ inputs.BUILD_TARGET }}image"
-
-    - name: Map Branch to CatDev3 Manifest Branch
-      run: |
-        FOX_BRANCH="${{ inputs.MANIFEST_BRANCH }}"
-        case "$FOX_BRANCH" in
-          "12.1") CATDEV_BRANCH="fox_12.1" && JAVA_VERSION="11" && CHECK_LEGACY_BRANCH="false" ;;
-          "11.0") CATDEV_BRANCH="fox_11.0" && JAVA_VERSION="11" && CHECK_LEGACY_BRANCH="false" ;;
-          "10.0") CATDEV_BRANCH="fox_10.0" && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
-          "9.0")  CATDEV_BRANCH="fox_9.0"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
-          "8.1")  CATDEV_BRANCH="fox_8.1"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
-          "7.1")  CATDEV_BRANCH="fox_7.1"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
-          "6.0")  CATDEV_BRANCH="fox_6.0"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
-          *)      CATDEV_BRANCH="fox_$FOX_BRANCH" && JAVA_VERSION="11" && CHECK_LEGACY_BRANCH="false" ;;
-        esac
-        echo "CATDEV_BRANCH=${CATDEV_BRANCH}"             >> $GITHUB_ENV
-        echo "JAVA_VERSION=${JAVA_VERSION}"               >> $GITHUB_ENV
-        echo "CHECK_LEGACY_BRANCH=${CHECK_LEGACY_BRANCH}" >> $GITHUB_ENV
-
+              
     - name: Clean-up
       uses: rokibhasansagar/slimhub_actions@main
 
@@ -88,45 +71,44 @@ jobs:
       uses: pierotofy/set-swap-space@master
       with:
         swap-size-gb: 12
-
-    - name: Install Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: zulu
-        java-version: ${{ env.JAVA_VERSION }}
-
+      
     - name: Build Environment
       run: |
-        sudo apt update
-        sudo apt -y install aria2 gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
-          lib32ncurses5-dev x11proto-core-dev lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc \
-          bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
-          libwxgtk3.0-gtk3-dev lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev \
-          lzma ncftp qemu-user-static libstdc++-10-dev libtinfo5 libgflags-dev
-        sudo add-apt-repository universe -y
-        sudo apt -y install libncurses5
-
-    - name: Install Git-Repo Tool
+        sudo apt install aria2 -y
+        git clone https://gitlab.com/OrangeFox/misc/scripts
+        cd scripts
+        sudo bash setup/android_build_env.sh
+      
+    - name: Set-up Manifest
       run: |
-        mkdir -p ~/bin
-        curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
-        chmod a+x ~/bin/repo
-        sudo ln -sf ~/bin/repo /usr/bin/repo
-
-    - name: Set-up Manifest (CatDev3)
-      run: |
-        mkdir -p ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
-        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+        mkdir -p ${GITHUB_WORKSPACE}/OrangeFox
+        cd ${GITHUB_WORKSPACE}/OrangeFox
         git config --global user.name "lazycodebuilder"
         git config --global user.email "154446636+lazycodebuilder@users.noreply.github.com"
-        repo init --depth=1 \
-          -u https://gitlab.com/CatDev3/Recovery \
-          -b ${{ env.CATDEV_BRANCH }}
+        git clone https://gitlab.com/OrangeFox/sync.git
+        if [ ${{ inputs.MANIFEST_BRANCH }} == '11.0' ] || [ ${{ inputs.MANIFEST_BRANCH }} == '12.1' ]; then
+            echo "Sync fox_${{ inputs.MANIFEST_BRANCH }} branch"
+            echo "CHECK_LEGACY_BRANCH=false" >> $GITHUB_ENV
+            cd sync
+            ./orangefox_sync.sh --branch ${{ inputs.MANIFEST_BRANCH }} --path ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+        else
+            echo "Sync legacy fox_${{ inputs.MANIFEST_BRANCH }} branch"
+            echo "CHECK_LEGACY_BRANCH=true" >> $GITHUB_ENV
+            cd sync/legacy
+            ./orangefox_sync_legacy.sh --branch ${{ inputs.MANIFEST_BRANCH }} --path ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+        fi
 
-    - name: Sync Repository
+    - name: Replace bootable/recovery with CatDev3 Source
       run: |
         cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
-        repo sync -j$(nproc --all) --force-sync
+        RECOVERY_DIR="bootable/recovery"
+        echo "Removing OrangeFox $RECOVERY_DIR ..."
+        rm -rf "$RECOVERY_DIR"
+        echo "Cloning CatDev3/Recovery into $RECOVERY_DIR ..."
+        git clone https://gitlab.com/CatDev3/Recovery \
+          -b fox_${{ inputs.MANIFEST_BRANCH }} \
+          "$RECOVERY_DIR" --depth=1
+        echo "Done — using CatDev3 recovery source (fox_${{ inputs.MANIFEST_BRANCH }})"
 
     - name: Clone Device Tree
       run: |
@@ -222,7 +204,7 @@ jobs:
           Commit: Most recent [commit](${{ inputs.DEVICE_TREE }}/commit/${{ env.COMMIT_ID }}) during building.
           MD5 (img): ${{ env.MD5_IMG }}
           MD5 (zip): ${{ env.MD5_ZIP }}
-
+          
     - name: Run LDCheck
       if: inputs.LDCHECK == 'true'
       run: |
