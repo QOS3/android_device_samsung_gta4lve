@@ -12,7 +12,7 @@ OF_OPTIONS_LIST_NUM := 12
 
 # others
 OF_UNBIND_SDCARD_F2FS := 1
-OF_QUICK_BACKUP_LIST := /boot;/data;/dtbo;
+OF_QUICK_BACKUP_LIST := /boot;/data;/dtbo;/recovery;
 OF_PATCH_AVB20 := 1
 OF_USE_DMCTL := 1
 OF_ENABLE_ALL_PARTITION_TOOLS := 1
