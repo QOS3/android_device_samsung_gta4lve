@@ -1,4 +1,4 @@
-name: OrangeFox [OFRP] 12.1
+name: OrangeFox [OFRP]
 
 on:
   workflow_dispatch:
@@ -13,6 +13,9 @@ on:
         - 11.0
         - 10.0
         - 9.0
+        - 8.1
+        - 7.1
+        - 6.0
       DEVICE_TREE:
         description: 'Custom Recovery Tree'
         required: true
@@ -36,14 +39,9 @@ on:
         default: 'false'
         type: boolean
       LDCHECKPATH:
-        description: 'Path of blobs to check'
+        description: 'Path of blobs to check' # Use it know what kind of dependencies your missing for decryption blobs.
         required: true
         default: 'system/bin/qseecomd'
-      RECOVERY_TAR:
-        description: 'Create recovery.tar (Samsung devices)'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   build:
@@ -52,63 +50,61 @@ jobs:
     if: github.event.repository.owner.id == github.event.sender.id
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      USER_NAME: "DevCat3"
-      USER_EMAIL: "omarelbakery2008@gmail.com"
     permissions:
       contents: write
     steps:
-    - name: Check Out Repository
-      uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    - name: Display User Inputs
+    - name: Display Inputs
       run: |
-        echo "::group::User Environment Variables"
-        echo "🦊 OrangeFox Branch: ${{ inputs.MANIFEST_BRANCH }}"
-        echo "🌳 Device Tree: ${{ inputs.DEVICE_TREE }}"
-        echo "📂 Device Branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
-        echo "🎯 Build Target: ${{ inputs.BUILD_TARGET }}image"
-        echo "::endgroup::"
+        echo "Displaying variables/inputs."
+        echo "Manifest Branch: ${{ inputs.MANIFEST_BRANCH }}"
+        echo "Device Tree: ${{ inputs.DEVICE_TREE }}"
+        echo "Device Branch: ${{ inputs.DEVICE_TREE_BRANCH }}"
+        echo "Build Target: ${{ inputs.BUILD_TARGET }}image"
 
-    - name: Map OrangeFox Branch to TWRP Manifest Branch
+    - name: Map Branch to CatDev3 Manifest Branch
       run: |
         FOX_BRANCH="${{ inputs.MANIFEST_BRANCH }}"
         case "$FOX_BRANCH" in
-          "12.1") MANIFEST_BRANCH="twrp-12.1" && JAVA_VERSION="11" ;;
-          "11.0") MANIFEST_BRANCH="twrp-11"   && JAVA_VERSION="11" ;;
-          "10.0") MANIFEST_BRANCH="twrp-10"   && JAVA_VERSION="8"  ;;
-          "9.0")  MANIFEST_BRANCH="twrp-9"    && JAVA_VERSION="8"  ;;
-          *)      MANIFEST_BRANCH="twrp-12.1" && JAVA_VERSION="11" ;;
+          "12.1") CATDEV_BRANCH="fox_12.1" && JAVA_VERSION="11" && CHECK_LEGACY_BRANCH="false" ;;
+          "11.0") CATDEV_BRANCH="fox_11.0" && JAVA_VERSION="11" && CHECK_LEGACY_BRANCH="false" ;;
+          "10.0") CATDEV_BRANCH="fox_10.0" && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
+          "9.0")  CATDEV_BRANCH="fox_9.0"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
+          "8.1")  CATDEV_BRANCH="fox_8.1"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
+          "7.1")  CATDEV_BRANCH="fox_7.1"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
+          "6.0")  CATDEV_BRANCH="fox_6.0"  && JAVA_VERSION="8"  && CHECK_LEGACY_BRANCH="true"  ;;
+          *)      CATDEV_BRANCH="fox_$FOX_BRANCH" && JAVA_VERSION="11" && CHECK_LEGACY_BRANCH="false" ;;
         esac
-        echo "✅ OrangeFox fox_${FOX_BRANCH} → TWRP Manifest: ${MANIFEST_BRANCH}"
-        echo "MANIFEST_BRANCH=${MANIFEST_BRANCH}" >> $GITHUB_ENV
-        echo "FOX_BRANCH=${FOX_BRANCH}"           >> $GITHUB_ENV
-        echo "JAVA_VERSION=${JAVA_VERSION}"        >> $GITHUB_ENV
+        echo "CATDEV_BRANCH=${CATDEV_BRANCH}"             >> $GITHUB_ENV
+        echo "JAVA_VERSION=${JAVA_VERSION}"               >> $GITHUB_ENV
+        echo "CHECK_LEGACY_BRANCH=${CHECK_LEGACY_BRANCH}" >> $GITHUB_ENV
 
-    - name: Cleanup Workspace
+    - name: Clean-up
       uses: rokibhasansagar/slimhub_actions@main
 
-    - name: Set Swap Space
+    - name: Swap Space
       uses: pierotofy/set-swap-space@master
       with:
-        swap-size-gb: 24
+        swap-size-gb: 12
 
-    - name: Prepare Build Environment
-      run: |
-        sudo apt update
-        sudo apt -y upgrade
-        sudo apt -y install gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
-          lib32ncurses5-dev x11proto-core-dev lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc \
-          bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
-          libwxgtk3.0-gtk3-dev lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev \
-          lzma ncftp qemu-user-static libstdc++-10-dev libtinfo5 libgflags-dev aria2
-        sudo add-apt-repository universe -y
-        sudo apt -y install libncurses5
-
-    - name: Install Java (Dynamic Version)
+    - name: Install Java
       uses: actions/setup-java@v4
       with:
         distribution: zulu
         java-version: ${{ env.JAVA_VERSION }}
+
+    - name: Build Environment
+      run: |
+        sudo apt update
+        sudo apt -y install aria2 gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
+          lib32ncurses5-dev x11proto-core-dev lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc \
+          bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
+          libwxgtk3.0-gtk3-dev lzop pngcrush schedtool squashfs-tools imagemagick libbz2-dev \
+          lzma ncftp qemu-user-static libstdc++-10-dev libtinfo5 libgflags-dev
+        sudo add-apt-repository universe -y
+        sudo apt -y install libncurses5
 
     - name: Install Git-Repo Tool
       run: |
@@ -117,45 +113,38 @@ jobs:
         chmod a+x ~/bin/repo
         sudo ln -sf ~/bin/repo /usr/bin/repo
 
-    - name: Initialize Repo with TWRP Manifest
+    - name: Set-up Manifest (CatDev3)
       run: |
-        mkdir -p workspace
-        cd workspace
-        git config --global user.name "${{ env.USER_NAME }}"
-        git config --global user.email "${{ env.USER_EMAIL }}"
+        mkdir -p ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+        git config --global user.name "lazycodebuilder"
+        git config --global user.email "154446636+lazycodebuilder@users.noreply.github.com"
         repo init --depth=1 \
-          -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git \
-          -b ${{ env.MANIFEST_BRANCH }}
+          -u https://gitlab.com/CatDev3/Recovery \
+          -b ${{ env.CATDEV_BRANCH }}
 
     - name: Sync Repository
       run: |
-        cd workspace
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
         repo sync -j$(nproc --all) --force-sync
-
-    - name: Replace bootable/recovery with OrangeFox Source
-      run: |
-        cd workspace
-        rm -rf bootable/recovery
-        git clone https://gitlab.com/OrangeFox/bootable/recovery \
-          -b fox_${{ env.FOX_BRANCH }} bootable/recovery --depth=1
-        echo "✅ Using OrangeFox bootable/recovery (fox_${{ env.FOX_BRANCH }})"
 
     - name: Clone Device Tree
       run: |
-        cd workspace
-        git clone ${{ inputs.DEVICE_TREE }} \
-          -b ${{ inputs.DEVICE_TREE_BRANCH }} \
-          ./device_tree --depth=1
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+        git clone ${{ inputs.DEVICE_TREE }} -b ${{ inputs.DEVICE_TREE_BRANCH }} ./device_tree
         cd device_tree
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
-    - name: Extract Variables from .mk File
+    - name: Extracting variables from .mk file
       run: |
-        cd workspace/device_tree
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/device_tree
+        # Initialize variables
         DEVICE_MAKEFILE=""
         DEVICE_DIRECTORY=""
         DEVICE_NAME=""
+        # Loop through each .mk file in the current directory
         for file in *.mk; do
+            # Extract variables using sed
             makefile=$(sed -n 's/^[[:space:]]*PRODUCT_NAME[[:space:]]*:=\s*\(.*\)/\1/p' "$file")
             brand=$(sed -n 's/^[[:space:]]*PRODUCT_BRAND[[:space:]]*:=\s*\(.*\)/\1/p' "$file")
             codename=$(sed -n 's/^[[:space:]]*PRODUCT_DEVICE[[:space:]]*:=\s*\(.*\)/\1/p' "$file")
@@ -164,111 +153,83 @@ jobs:
                 DEVICE_DIRECTORY="device/$brand"
                 DEVICE_NAME="$codename"
                 echo "DEVICE_MAKEFILE=${DEVICE_MAKEFILE}" >> $GITHUB_ENV
-                echo "DEVICE_NAME=${DEVICE_NAME}"         >> $GITHUB_ENV
+                echo "DEVICE_NAME=${DEVICE_NAME}" >> $GITHUB_ENV
                 echo "DEVICE_DIRECTORY=${DEVICE_DIRECTORY}" >> $GITHUB_ENV
                 break
             fi
         done
+        # Navigate to the parent directory
         cd ../
+        # Create the necessary directories
         echo "Creating directory: $DEVICE_DIRECTORY"
         mkdir -p "$DEVICE_DIRECTORY"
-        echo "Moving device_tree → $DEVICE_DIRECTORY/$DEVICE_NAME"
+        # Move device_tree folder to device_directory and rename it to $DEVICE_NAME
+        echo "Moving device_tree to $DEVICE_DIRECTORY/$DEVICE_NAME"
         mv device_tree "$DEVICE_DIRECTORY"/"$DEVICE_NAME"
 
-    - name: Install Python 2 (for legacy branches)
-      if: contains(env.MANIFEST_BRANCH, 'twrp-9') || contains(env.MANIFEST_BRANCH, 'twrp-10')
+    - name: Installing python2 for legacy builds
+      if: env.CHECK_LEGACY_BRANCH == 'true'
       run: |
-        sudo apt -y install python2
-        sudo ln -sf /usr/bin/python2 /usr/bin/python
-        echo "✅ Python 2 installed for ${{ env.MANIFEST_BRANCH }}"
+        sudo apt-get install python2 python-is-python2
 
-    - name: Build OrangeFox Recovery
+    - name: Building OrangeFox
       run: |
-        cd workspace
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
         set +e
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
         set -e
-        lunch twrp_${{ env.DEVICE_NAME }}-eng
-        make clean
-        mka adbd ${{ inputs.BUILD_TARGET }}image -j$(nproc --all)
-        echo "✅ Build complete!"
-
-    - name: Set Build Date
-      run: |
-        echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
-        DEVICE_TREE_URL="${{ inputs.DEVICE_TREE }}"
-        if [[ "${DEVICE_TREE_URL}" == *.git ]]; then
-          DEVICE_TREE_URL="${DEVICE_TREE_URL%.git}"
-        fi
-        echo "DEVICE_TREE_URL=${DEVICE_TREE_URL}" >> $GITHUB_ENV
-
-    - name: Check if Recovery Image Exists
-      run: |
-        cd workspace
-        PRODUCT_PATH="out/target/product/${{ env.DEVICE_NAME }}"
-
-        # OrangeFox produces its own named image
-        if [ -f "$PRODUCT_PATH"/OrangeFox*.img ]; then
-            echo "CHECK_IMG_IS_OK=true" >> $GITHUB_ENV
-            echo "MD5_IMG=$(md5sum $PRODUCT_PATH/OrangeFox*.img | cut -d ' ' -f 1)" >> $GITHUB_ENV
-        elif [ -f "$PRODUCT_PATH/${{ inputs.BUILD_TARGET }}.img" ]; then
-            echo "CHECK_IMG_IS_OK=true" >> $GITHUB_ENV
-            echo "MD5_IMG=$(md5sum $PRODUCT_PATH/${{ inputs.BUILD_TARGET }}.img | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        if [ ${{ inputs.MANIFEST_BRANCH }} == '11.0' ] || [ ${{ inputs.MANIFEST_BRANCH }} == '12.1' ]; then
+            lunch twrp_${{ env.DEVICE_NAME }}-eng && make clean && mka adbd ${{ inputs.BUILD_TARGET }}image
         else
-            echo "❌ No recovery image found!"
-            exit 1
+            lunch omni_${{ env.DEVICE_NAME }}-eng && make clean && mka ${{ inputs.BUILD_TARGET }}image
         fi
 
-        if [ -f "$PRODUCT_PATH"/OrangeFox*.zip ]; then
-            echo "CHECK_ZIP_IS_OK=true" >> $GITHUB_ENV
-            echo "MD5_ZIP=$(md5sum $PRODUCT_PATH/OrangeFox*.zip | cut -d ' ' -f 1)" >> $GITHUB_ENV
-        fi
-
-    - name: Create Samsung TAR (Optional)
-      if: inputs.RECOVERY_TAR == 'true'
+    - name: Set Build Date # For Build Date Info, currently using Asia/Manila
       run: |
-        cd workspace/out/target/product/${{ env.DEVICE_NAME }}/
-        IMG=$(ls OrangeFox*.img 2>/dev/null || echo "${{ inputs.BUILD_TARGET }}.img")
-        tar -cvf recovery.tar "$IMG"
-        echo "✅ Created recovery.tar"
-      continue-on-error: true
+        echo "BUILD_DATE=$(TZ=Asia/Manila date +%Y%m%d)" >> $GITHUB_ENV
 
-    - name: Upload to GitHub Release
-      if: env.CHECK_IMG_IS_OK == 'true'
-      uses: softprops/action-gh-release@v1
+    - name: Check if Recovery Exist
+      run: |
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+        if [ -f out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.img ]; then
+            echo "CHECK_IMG_IS_OK=true" >> $GITHUB_ENV
+            echo "MD5_IMG=$(md5sum out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.img | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        else
+            echo "Recovery out directory is empty."
+        fi
+        if [ -f out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.zip ]; then
+            echo "CHECK_ZIP_IS_OK=true" >> $GITHUB_ENV
+            echo "MD5_ZIP=$(md5sum out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.zip | cut -d ' ' -f 1)" >> $GITHUB_ENV
+        else
+            echo "Recovery out directory is empty."
+        fi
+
+    - name: Upload to Release
+      if: env.CHECK_IMG_IS_OK == 'true' && env.CHECK_ZIP_IS_OK == 'true'
+      uses: softprops/action-gh-release@master
       with:
         files: |
-          workspace/out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.img
-          workspace/out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.zip
-          workspace/out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.img.tar
-          workspace/out/target/product/${{ env.DEVICE_NAME }}/recovery.tar
-          workspace/out/target/product/${{ env.DEVICE_NAME }}/ramdisk-recovery.*
-        name: "OrangeFox fox_${{ env.FOX_BRANCH }} for ${{ env.DEVICE_NAME }} // ${{ env.BUILD_DATE }}"
-        tag_name: "ofrp-fox_${{ env.FOX_BRANCH }}-${{ env.DEVICE_NAME }}-${{ env.BUILD_DATE }}-${{ github.run_id }}"
+          OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.img
+          OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.img.tar
+          OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ env.DEVICE_NAME }}/OrangeFox*.zip
+          OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ env.DEVICE_NAME }}/ramdisk-recovery.*
+        name: Unofficial OrangeFox for ${{ env.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
+        tag_name: ${{ github.run_id }}
         body: |
-          ## Build Information
-          - 🦊 **OrangeFox Branch:** fox_${{ env.FOX_BRANCH }}
-          - 📦 **Manifest:** minimal-manifest-twrp (${{ env.MANIFEST_BRANCH }})
-          - 🎯 **Target:** ${{ inputs.BUILD_TARGET }}.img
-          - 🌳 **Device Tree:** [${{ inputs.DEVICE_TREE_BRANCH }}](${{ env.DEVICE_TREE_URL }}/tree/${{ inputs.DEVICE_TREE_BRANCH }})
-          - 🔖 **Commit:** [Latest commit](${{ env.DEVICE_TREE_URL }}/commit/${{ env.COMMIT_ID }}) during build
-          - 🔢 **MD5 (img):** `${{ env.MD5_IMG }}`
-          - 🔢 **MD5 (zip):** `${{ env.MD5_ZIP }}`
-          - 🏗️ **Built by:** @${{ github.actor }}
-          - 🔁 **Recovery Source:** [OrangeFox/bootable/recovery](https://gitlab.com/OrangeFox/bootable/recovery/-/tree/fox_${{ env.FOX_BRANCH }})
+          Build: ${{ inputs.MANIFEST_BRANCH }}
+          Device: [Device Tree/Branch](${{ inputs.DEVICE_TREE }}/tree/${{ inputs.DEVICE_TREE_BRANCH }})
+          Commit: Most recent [commit](${{ inputs.DEVICE_TREE }}/commit/${{ env.COMMIT_ID }}) during building.
+          MD5 (img): ${{ env.MD5_IMG }}
+          MD5 (zip): ${{ env.MD5_ZIP }}
 
     - name: Run LDCheck
       if: inputs.LDCHECK == 'true'
       run: |
-        if [ -d "tools" ] && [ -f "tools/libneeds" ] && [ -f "tools/ldcheck" ]; then
-          cd tools
-          mv -n libneeds ${GITHUB_WORKSPACE}/workspace/out/target/product/${{ env.DEVICE_NAME }}/recovery/root/
-          mv -n ldcheck  ${GITHUB_WORKSPACE}/workspace/out/target/product/${{ env.DEVICE_NAME }}/recovery/root/
-          cd ${GITHUB_WORKSPACE}/workspace/out/target/product/${{ env.DEVICE_NAME }}/recovery/root
-          python3 ldcheck -p system/lib64:vendor/lib64:system/lib:vendor/lib -d ${{ inputs.LDCHECKPATH }}
-          echo "✅ Dependency check completed"
-        else
-          echo "⚠️ ldcheck tools not found, skipping"
-        fi
+        cd tools
+        mv -n libneeds ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ env.DEVICE_NAME }}/recovery/root/
+        mv -n ldcheck ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ env.DEVICE_NAME }}/recovery/root/
+        cd ../OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ env.DEVICE_NAME }}/recovery/root
+        python3 ldcheck -p system/lib64:vendor/lib64:system/lib:vendor/lib -d ${{ inputs.LDCHECKPATH }}
+        echo "Done checking missing dependencies. Review, and reconfigure your tree."
       continue-on-error: true
