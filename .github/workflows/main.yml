@@ -61,9 +61,9 @@ jobs:
     if: github.event.repository.owner.id == github.event.sender.id
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      USER_NAME: "DevCat3"
-      USER_EMAIL: "omarelbakery2008@gmail.com"
-      USER_GITHUB_USERNAME: "DevCat3"
+      USER_NAME: "QOS3"
+      USER_EMAIL: "seefpro11@gmail.com"
+      USER_GITHUB_USERNAME: "QOS3"
     permissions:
       contents: write
     steps:
@@ -149,13 +149,13 @@ jobs:
         cd workspace
         repo sync -j$(nproc --all) --force-sync
 
-    - name: Replace bootable/recovery with DevCat3 fork
+    - name: Replace bootable/recovery with QOS3 fork
       run: |
         cd workspace
         rm -rf bootable/recovery
-        git clone https://github.com/DevCat3/android_bootable_recovery \
+        git clone https://github.com/QOS3/android_bootable_recovery \
           -b android-12.1 bootable/recovery --depth=1
-        echo "✅ Using DevCat3/android_bootable_recovery (android-12.1)" 
+        echo "✅ Using QOS3/android_bootable_recovery (android-12.1)" 
 
     - name: Clone Device Tree
       run: |
@@ -260,7 +260,7 @@ jobs:
           - 🔖 **Commit:** [Latest commit](${{ env.DEVICE_TREE_URL }}/commit/${{ env.COMMIT_ID }}) during build
           - 🔢 **MD5:** `${{ env.MD5_IMG }}`
           - 🏗️ **Built by:** @${{ github.actor }}
-          - 🐱 **Recovery Source:** [DevCat3/android_bootable_recovery](https://github.com/DevCat3/android_bootable_recovery/tree/android-12.1)
+          - 🐱 **Recovery Source:** [QOS3/android_bootable_recovery](https://github.com/QOS3/android_bootable_recovery/tree/android-12.1)
 
           ## Installation Instructions
           - For Samsung devices: Use TAR file with Odin
