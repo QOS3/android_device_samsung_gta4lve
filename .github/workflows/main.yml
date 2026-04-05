@@ -22,7 +22,7 @@ on:
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
-        default: 'https://github.com/DevCatowa/android_device_samsung_gta4lve'
+        default: 'https://github.com/QOS3/android_device_samsung_gta4lve'
       DEVICE_TREE_BRANCH:
         description: 'Device Tree Branch'
         required: true
@@ -51,7 +51,7 @@ on:
       RECOVERY_TAR:
         description: 'Create recovery.tar for Samsung devices'
         required: false
-        default: false
+        default: true
         type: boolean
 
 jobs:
