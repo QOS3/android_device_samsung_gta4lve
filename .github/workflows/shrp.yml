@@ -121,12 +121,9 @@ jobs:
         cd android-recovery
         repo sync -j$(nproc --all) --force-sync
 
-    - name: Clone TWRP custom vold (provides libfscrypttwrp)
+    - name: Fix libfscrypttwrp dependency in fs_mgr
       run: |
-        cd android-recovery
-        rm -rf system/vold
-        git clone https://github.com/TeamWin/android_system_vold \
-          -b android-12.1 system/vold --depth=1
+        sed -i 's/libfscrypttwrp/libfscrypt/g' android-recovery/system/core/fs_mgr/Android.bp
 
     - name: Clone Device Tree
       run: |
