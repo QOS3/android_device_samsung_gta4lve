@@ -6,9 +6,11 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/twrp_gta4lve.mk
+    $(LOCAL_DIR)/twrp_gta4lve.mk \
+    $(LOCAL_DIR)/shrp_gta4lve.mk
 
 COMMON_LUNCH_CHOICES := \
     twrp_gta4lve-user \
     twrp_gta4lve-userdebug \
-    twrp_gta4lve-eng
+    twrp_gta4lve-eng \
+    shrp_gta4lve-eng
