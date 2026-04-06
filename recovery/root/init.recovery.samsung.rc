@@ -1,9 +1,13 @@
 on init
-    # unlink /efs > /mnt/vendor/efs
+    symlink /vendor/etc/vintf/manifest.xml /vendor/manifest.xml
+
     rm /efs
     mkdir /efs
     mkdir /sec_efs
-    
+
+on property:init.svc.keystore2=restarting
+    symlink /vendor/etc/vintf/manifest.xml /vendor/manifest.xml
+
 on property:ro.vendor.build.id=*
     symlink /vendor/etc/vintf/manifest.xml /vendor/manifest.xml
     restart keystore2
