@@ -1,26 +1,5 @@
 on init
-    symlink /vendor/etc/vintf/manifest.xml /vendor/manifest.xml
-
+    # Samsung EFS mounts
     rm /efs
     mkdir /efs
     mkdir /sec_efs
-
-on fs
-    wait /dev/block/by-name/sec_efs
-    mount ext4 /dev/block/by-name/sec_efs /efs noatime nosuid nodev
-    wait /dev/block/by-name/vendor_efs
-    mkdir /mnt/vendor/efs 0771 system system
-    mount ext4 /dev/block/by-name/vendor_efs /mnt/vendor/efs noatime nosuid nodev
-
-    mkdir /mnt/vendor/efs/DAK 0775 system system
-    mkdir /data/vendor/keymaster 0775 system system
-
-on post-fs
-    start vendor.keymaster-4-0
-
-on property:init.svc.keystore2=restarting
-    symlink /vendor/etc/vintf/manifest.xml /vendor/manifest.xml
-
-on property:ro.vendor.build.id=*
-    symlink /vendor/etc/vintf/manifest.xml /vendor/manifest.xml
-    restart keystore2
